@@ -3,6 +3,7 @@ package com.shopping.Mercado.Controller;
 import com.shopping.Mercado.Dto.CategoryDTO.CategoryDetailResponse;
 import com.shopping.Mercado.Dto.CategoryDTO.CategoryListResponse;
 import com.shopping.Mercado.Dto.CategoryDTO.CreateCategoryRequest;
+import com.shopping.Mercado.Dto.CategoryDTO.UpdateCategoryRequest;
 import com.shopping.Mercado.Service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -41,5 +42,10 @@ public class CategoryController {
     public ResponseEntity<Void> deleteCategoryById(@PathVariable UUID id){
         categoryService.deleteCategoryById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/id/{id}")
+    public ResponseEntity<CategoryListResponse> updateCategoryById(@PathVariable UUID id, @RequestBody UpdateCategoryRequest category){
+        return ResponseEntity.ok(categoryService.updateCategory(id, category));
     }
 }
