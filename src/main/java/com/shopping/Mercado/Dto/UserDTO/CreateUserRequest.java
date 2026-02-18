@@ -1,0 +1,13 @@
+package com.shopping.Mercado.Dto.UserDTO;
+
+import com.shopping.Mercado.Entity.enums.UserRole;
+import lombok.Data;
+
+@Data
+public class CreateUserRequest {
+    public String username;
+    public String email;
+    public String password;
+    public String phoneNumber;
+    public UserRole role;
+}

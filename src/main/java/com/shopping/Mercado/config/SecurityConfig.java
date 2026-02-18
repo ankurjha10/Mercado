@@ -1,5 +1,6 @@
 package com.shopping.Mercado.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,39 +19,30 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    @Autowired
-    private UserDetailsService userDetailsService;
+    private final UserDetailsService userDetailsService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         return http.csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(requests -> requests.anyRequest().authenticated())
+            .authorizeHttpRequests(requests -> requests
+                    .requestMatchers("/user/**").permitAll()
+                    .anyRequest().authenticated()
+            )
             .formLogin(Customizer.withDefaults())
             .httpBasic(Customizer.withDefaults())
             .build();
     }
 
-    @Bean
-    public UserDetailsService userDetailsService() {
-
-        UserDetails user1 = User
-                .withDefaultPasswordEncoder()
-                .username("Diya")
-                .password("DiyaLovesAnkur")
-                .roles("ADMIN")
-                .build();
-
-        return new InMemoryUserDetailsManager(user1);
-    }
 
     @Bean
     public AuthenticationProvider authenticationProvider(){
         DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
         daoAuthenticationProvider.setPasswordEncoder(NoOpPasswordEncoder.getInstance());
-        daoAuthenticationProvider.setUserDetailsService(userDetailsService());
+        daoAuthenticationProvider.setUserDetailsService(userDetailsService);
         return daoAuthenticationProvider;
     }
 }
