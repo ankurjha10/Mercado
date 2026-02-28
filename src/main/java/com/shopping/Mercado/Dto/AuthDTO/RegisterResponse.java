@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.UUID;
 
 @Data
-public class UserResponse {
+public class RegisterResponse {
     public UUID id;
     public String username;
     public String email;

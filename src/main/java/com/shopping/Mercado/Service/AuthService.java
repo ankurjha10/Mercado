@@ -1,11 +1,13 @@
 package com.shopping.Mercado.Service;
 
-import com.shopping.Mercado.Dto.AuthDTO.CreateUserRequest;
-import com.shopping.Mercado.Dto.AuthDTO.LoginRequestDTO;
-import com.shopping.Mercado.Dto.AuthDTO.UserResponse;
+import com.shopping.Mercado.Dto.AuthDTO.RegisterRequest;
+import com.shopping.Mercado.Dto.AuthDTO.LoginRequest;
+import com.shopping.Mercado.Dto.AuthDTO.LoginResponse;
+import com.shopping.Mercado.Dto.AuthDTO.RegisterResponse;
 import com.shopping.Mercado.Entity.User;
+import com.shopping.Mercado.Entity.UserPrincipal;
 import com.shopping.Mercado.Repository.UserRepository;
-import com.shopping.Mercado.Security.JwtUtil;
+import com.shopping.Mercado.Security.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -18,26 +20,27 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final JwtUtil jwtUtil;
+    private final AuthUtil authUtil;
     private final AuthenticationManager authManager;
     private final BCryptPasswordEncoder passwordEncoder;
 
-    public UserResponse register(CreateUserRequest dto) {
-        boolean checkExistingUser = userRepository.existsByEmailOrPhoneNumber(dto.email, dto.phoneNumber);
+    public RegisterResponse register(RegisterRequest signUpRequest) {
+        boolean checkExistingUser = userRepository.existsByEmailOrPhoneNumber(signUpRequest.email, signUpRequest.phoneNumber);
 
         if (checkExistingUser)
-            throw new RuntimeException("User already exists");
+            throw new IllegalArgumentException("User already exists");
 
-        User user = new User();
-        user.setUsername(dto.username);
-        user.setPassword(passwordEncoder.encode(dto.password));
-        user.setEmail(dto.email);
-        user.setPhoneNumber(dto.phoneNumber);
-        user.setRole(dto.role);
+        User savedUser = userRepository.save(User.builder()
+                .username(signUpRequest.username)
+                .email(signUpRequest.email)
+                .password(passwordEncoder.encode(signUpRequest.password))
+                .phoneNumber(signUpRequest.phoneNumber)
+                .role(signUpRequest.role)
+                .isActive(true)
+                .build()
+        );
 
-        User savedUser = userRepository.save(user);
-
-        UserResponse res = new UserResponse();
+        RegisterResponse res = new RegisterResponse();
         res.id = savedUser.getId();
         res.username = savedUser.getUsername();
         res.email = savedUser.getEmail();
@@ -47,14 +50,14 @@ public class AuthService {
         return res;
     }
 
-    public String login(LoginRequestDTO user) {
+    public LoginResponse login(LoginRequest loginRequest) {
         Authentication authentication =
-                authManager.authenticate(new UsernamePasswordAuthenticationToken(user.username, user.password));
+                authManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.username, loginRequest.password));
 
-        if(authentication.isAuthenticated()) {
-            return jwtUtil.generateToken(user.username);
-        } else {
-            throw new RuntimeException("Invalid username or password");
-        }
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        User user = userPrincipal.getUser();
+        String token = authUtil.generateAccessToken(user);
+
+        return new LoginResponse(token, user.getId());
     }
 }
