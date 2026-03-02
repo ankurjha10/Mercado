@@ -41,7 +41,7 @@ public class AuthService {
         );
 
         RegisterResponse res = new RegisterResponse();
-        res.id = savedUser.getId();
+        res.id = savedUser.getUserId();
         res.username = savedUser.getUsername();
         res.email = savedUser.getEmail();
         res.phoneNumber = savedUser.getPhoneNumber();
@@ -58,6 +58,6 @@ public class AuthService {
         User user = userPrincipal.getUser();
         String token = authUtil.generateAccessToken(user);
 
-        return new LoginResponse(token, user.getId());
+        return new LoginResponse(token, user.getUserId());
     }
 }

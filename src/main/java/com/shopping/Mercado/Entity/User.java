@@ -2,6 +2,7 @@ package com.shopping.Mercado.Entity;
 
 import com.shopping.Mercado.Entity.enums.UserRole;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -22,15 +23,18 @@ public class User {
     @Id
     @GeneratedValue
     @UuidGenerator
-    private UUID id;
+    private UUID userId;
 
     @JoinColumn(unique = true)
     private String username;
 
+    @NotBlank
     private String password;
 
+    @NotBlank
     private String email;
 
+    @NotBlank
     private String phoneNumber;
 
     @Enumerated(EnumType.STRING)
