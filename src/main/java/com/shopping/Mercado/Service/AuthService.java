@@ -10,8 +10,10 @@ import com.shopping.Mercado.Repository.UserRepository;
 import com.shopping.Mercado.Security.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -25,39 +27,87 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder;
 
     public RegisterResponse register(RegisterRequest signUpRequest) {
-        boolean checkExistingUser = userRepository.existsByEmailOrPhoneNumber(signUpRequest.email, signUpRequest.phoneNumber);
+        // Validate input
+        if (signUpRequest.username == null || signUpRequest.username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be empty");
+        }
+        if (signUpRequest.email == null || signUpRequest.email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Email cannot be empty");
+        }
+        if (signUpRequest.password == null || signUpRequest.password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be empty");
+        }
+        if (signUpRequest.phoneNumber == null || signUpRequest.phoneNumber.trim().isEmpty()) {
+            throw new IllegalArgumentException("Phone number cannot be empty");
+        }
 
-        if (checkExistingUser)
-            throw new IllegalArgumentException("User already exists");
-
-        User savedUser = userRepository.save(User.builder()
-                .username(signUpRequest.username)
-                .email(signUpRequest.email)
-                .password(passwordEncoder.encode(signUpRequest.password))
-                .phoneNumber(signUpRequest.phoneNumber)
-                .role(signUpRequest.role)
-                .isActive(true)
-                .build()
+        // Check if user already exists
+        boolean userExists = userRepository.existsByEmailOrPhoneNumber(
+                signUpRequest.email.trim(),
+                signUpRequest.phoneNumber.trim()
         );
 
-        RegisterResponse res = new RegisterResponse();
-        res.id = savedUser.getUserId();
-        res.username = savedUser.getUsername();
-        res.email = savedUser.getEmail();
-        res.phoneNumber = savedUser.getPhoneNumber();
-        res.role = savedUser.getRole();
+        if (userExists) {
+            throw new IllegalArgumentException("User already exists with this email or phone number");
+        }
 
-        return res;
+        // Check if username already taken
+        if (userRepository.findByUsername(signUpRequest.username.trim()) != null) {
+            throw new IllegalArgumentException("Username already taken");
+        }
+
+        try {
+            User newUser = User.builder()
+                    .username(signUpRequest.username.trim())
+                    .email(signUpRequest.email.trim())
+                    .password(passwordEncoder.encode(signUpRequest.password))
+                    .phoneNumber(signUpRequest.phoneNumber.trim())
+                    .role(signUpRequest.role != null ? signUpRequest.role : com.shopping.Mercado.Entity.enums.UserRole.CUSTOMER)
+                    .isActive(true)
+                    .build();
+
+            User savedUser = userRepository.save(newUser);
+
+            RegisterResponse res = new RegisterResponse();
+            res.id = savedUser.getUserId();
+            res.username = savedUser.getUsername();
+            res.email = savedUser.getEmail();
+            res.phoneNumber = savedUser.getPhoneNumber();
+            res.role = savedUser.getRole();
+
+            return res;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error during user registration: " + e.getMessage());
+        }
     }
 
     public LoginResponse login(LoginRequest loginRequest) {
-        Authentication authentication =
-                authManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.username, loginRequest.password));
+        try {
+            if (loginRequest.username == null || loginRequest.username.trim().isEmpty()) {
+                throw new IllegalArgumentException("Username cannot be empty");
+            }
+            if (loginRequest.password == null || loginRequest.password.trim().isEmpty()) {
+                throw new IllegalArgumentException("Password cannot be empty");
+            }
 
-        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-        User user = userPrincipal.getUser();
-        String token = authUtil.generateAccessToken(user);
+            Authentication authentication = authManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.username.trim(),
+                            loginRequest.password
+                    )
+            );
 
-        return new LoginResponse(token, user.getUserId());
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            User user = userPrincipal.getUser();
+            String token = authUtil.generateAccessToken(user);
+
+            return new LoginResponse(token, user.getUserId());
+        } catch (BadCredentialsException e) {
+            throw new IllegalArgumentException("Invalid username or password");
+        } catch (UsernameNotFoundException e) {
+            throw new IllegalArgumentException("User not found");
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Login failed: " + e.getMessage());
+        }
     }
 }
