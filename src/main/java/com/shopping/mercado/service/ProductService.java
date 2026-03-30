@@ -1,5 +1,7 @@
 package com.shopping.mercado.service;
 
+import com.shopping.mercado.entity.Seller;
+import com.shopping.mercado.repository.SellerRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final SellerRepository sellerRepository;
 
     private static final String PRODUCT_NOT_FOUND = "Product not found with id: ";
 
@@ -73,8 +76,17 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductDetailResponse addProduct(@NotNull CreateProductRequest dto) {
+    public ProductDetailResponse addProduct(@NotNull CreateProductRequest dto, UUID userId) {
         Category category = categoryRepository.findById(dto.getCategoryId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found with id: " + dto.getCategoryId()));
+
+        Seller seller = sellerRepository.findByUserUserId(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Seller not found"));
+
+        if (!seller.isVerified()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Your profile is not approved yet. Wait for approval");
+        }
 
         Product product = new Product();
         product.setProductName(dto.getProductName());
@@ -83,6 +95,7 @@ public class ProductService {
         product.setProductPrice(dto.getProductPrice());
         product.setProductStock(dto.getProductQuantity());
         product.setProductCategory(category);
+        product.setSeller(seller);
 
         Product saved = productRepository.save(product);
 
@@ -98,15 +111,22 @@ public class ProductService {
     }
 
     @Transactional
-    public void deleteProductById(UUID id){
+    public void deleteProductById(UUID id, UUID sellerId) {
         Product product = productRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, PRODUCT_NOT_FOUND + id));
+
+        if (!product.getSeller().getUser().getUserId().equals(sellerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seller not found");
+        }
         productRepository.delete(product);
     }
 
     @Transactional
-    public ProductDetailResponse updateProduct(UUID id, UpdateProductRequest dto) {
+    public ProductDetailResponse updateProduct(UUID id, UpdateProductRequest dto, UUID sellerId) {
         Product product = productRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, PRODUCT_NOT_FOUND + id));
 
+        if (!product.getSeller().getUser().getUserId().equals(sellerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This Product doesn't belong to you");
+        }
 
         if (dto.productName != null)
             product.setProductName(dto.productName);

@@ -52,7 +52,6 @@ public class Address {
     @NotBlank
     private String country;
 
-    @NotBlank
     private boolean isDefault;
 
     @CreationTimestamp

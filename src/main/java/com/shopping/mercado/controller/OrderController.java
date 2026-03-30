@@ -1,8 +1,10 @@
 package com.shopping.mercado.controller;
 
+import com.shopping.mercado.dto.order.CheckoutRequest;
 import com.shopping.mercado.dto.order.OrderResponse;
 import com.shopping.mercado.entity.UserPrincipal;
 import com.shopping.mercado.service.OrderService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +23,9 @@ public class OrderController {
 
     @PostMapping("/checkout")
     @PreAuthorize("hasRole('CUSTOMER')")
-    public ResponseEntity<OrderResponse> checkout(@AuthenticationPrincipal UserPrincipal userDetails) {
+    public ResponseEntity<OrderResponse> checkout(@RequestBody @Valid CheckoutRequest request, @AuthenticationPrincipal UserPrincipal userDetails) {
         UUID customerId = userDetails.getUser().getUserId();
-        OrderResponse orderResponse = orderService.placeOrder(customerId);
+        OrderResponse orderResponse = orderService.placeOrder(customerId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(orderResponse);
     }
 }

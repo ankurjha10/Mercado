@@ -25,7 +25,7 @@ public class Seller {
     @Id
     @GeneratedValue
     @UuidGenerator
-    private UUID id;
+    private UUID sellerId;
 
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)
@@ -45,7 +45,7 @@ public class Seller {
 
     private boolean isVerified;
 
-    private int phoneNumber;
+    private String phoneNumber;
 
     @CreationTimestamp
     private Date createdAt;

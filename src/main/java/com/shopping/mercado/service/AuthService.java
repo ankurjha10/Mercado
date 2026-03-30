@@ -1,5 +1,6 @@
 package com.shopping.mercado.service;
 
+import com.shopping.mercado.entity.Seller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -68,7 +69,15 @@ public class AuthService {
                     .isActive(true)
                     .build();
 
+
             User savedUser = userRepository.save(newUser);
+
+            if (newUser.getRole().equals(UserRole.SELLER)) {
+                Seller seller = new Seller();
+                seller.setUser(savedUser);
+                seller.setStoreName("DefaultStore");
+                seller.setStoreDescription("Add Store Description");
+            }
 
             RegisterResponse res = new RegisterResponse();
             res.setId(savedUser.getUserId());

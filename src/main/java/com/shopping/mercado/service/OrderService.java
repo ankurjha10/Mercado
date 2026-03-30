@@ -1,5 +1,6 @@
 package com.shopping.mercado.service;
 
+import com.shopping.mercado.dto.order.CheckoutRequest;
 import com.shopping.mercado.dto.order.OrderItemResponse;
 import com.shopping.mercado.dto.order.OrderResponse;
 import com.shopping.mercado.entity.*;
@@ -27,7 +28,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
 
     @Transactional
-    public OrderResponse placeOrder(UUID customerId){
+    public OrderResponse placeOrder(UUID customerId, CheckoutRequest request){
         // Fetch the cart for the customer
         Cart cart = cartRepository.findByUserId(customerId)
                 .orElseThrow(() -> new RuntimeException("Cart not found for user: " + customerId));
@@ -52,8 +53,12 @@ public class OrderService {
         }
 
         //Fetch the Address
-        Address address = addressRepository.findByUserUserId(customerId)
+        Address address = addressRepository.findById(request.getAddressId())
                 .orElseThrow(() -> new RuntimeException("Address not found for user: " + customerId));
+
+        if (!address.getUser().getUserId().equals(customerId)) {
+            throw new RuntimeException("Use a valid address");
+        }
 
         //Creating a new Order
         Orders orders = Orders.builder()
