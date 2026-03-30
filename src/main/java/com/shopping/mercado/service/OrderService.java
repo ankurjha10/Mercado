@@ -33,24 +33,7 @@ public class OrderService {
         Cart cart = cartRepository.findByUserId(customerId)
                 .orElseThrow(() -> new RuntimeException("Cart not found for user: " + customerId));
 
-        List<CartItem> cartItemList = cart.getCartItems();
-
-        //Check if cart is empty or not
-        if (cartItemList.isEmpty()) {
-            throw new RuntimeException("Cart is empty for user: " + customerId);
-        }
-
-        //Checking Stock Availability
-        for (CartItem cartItem : cartItemList){
-            Product product = cartItem.getProduct();
-            if (product.getProductStock() < cartItem.getQuantity()){
-                throw new RuntimeException("Insufficient stock for product: " + product.getProductName());
-            }
-            else {
-                // Reduce the stock
-                product.setProductStock(product.getProductStock() - cartItem.getQuantity());
-            }
-        }
+        List<CartItem> cartItemList = getCartItems(customerId, cart);
 
         //Fetch the Address
         Address address = addressRepository.findById(request.getAddressId())
@@ -121,5 +104,27 @@ public class OrderService {
         orderResponse.setTotalAmount(placedOrder.getTotalAmount());
 
         return orderResponse;
+    }
+
+    private static List<CartItem> getCartItems(UUID customerId, Cart cart) {
+        List<CartItem> cartItemList = cart.getCartItems();
+
+        //Check if cart is empty or not
+        if (cartItemList.isEmpty()) {
+            throw new RuntimeException("Cart is empty for user: " + customerId);
+        }
+
+        //Checking Stock Availability
+        for (CartItem cartItem : cartItemList){
+            Product product = cartItem.getProduct();
+            if (product.getProductStock() < cartItem.getQuantity()){
+                throw new RuntimeException("Insufficient stock for product: " + product.getProductName());
+            }
+            else {
+                // Reduce the stock
+                product.setProductStock(product.getProductStock() - cartItem.getQuantity());
+            }
+        }
+        return cartItemList;
     }
 }

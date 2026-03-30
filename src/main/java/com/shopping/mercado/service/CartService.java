@@ -53,7 +53,6 @@ public class CartService {
                 .orElseGet(() -> {
                     Cart newCart = new Cart();
                     newCart.setCustomer(user);
-                    // Don't set cartId - let database generate it
                     return cartRepository.save(newCart);
                 });
 
