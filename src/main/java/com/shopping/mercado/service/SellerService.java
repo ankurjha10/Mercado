@@ -97,8 +97,24 @@ public class SellerService {
     public SellerProfileResponse updateSellerProfile(UUID userId, SellerProfileRequest request) {
         Seller seller = sellerRepository.findByUserUserId(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Seller not found"));
 
-        if (!seller.isVerified()) {
-
+        if (sellerRepository.existsByStoreNameAndSellerIdNot(request.getStoreName(), seller.getSellerId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Store name already exists");
         }
+
+        seller.setStoreName(request.getStoreName());
+        seller.setStoreLogoUrl(request.getStoreLogoUrl());
+        seller.setStoreDescription(request.getStoreDescription());
+        seller.setPhoneNumber(request.getPhoneNumber());
+        seller.setGstNumber(request.getGstNumber());
+
+        return new SellerProfileResponse(
+                seller.getSellerId(),
+                seller.getStoreName(),
+                seller.getStoreDescription(),
+                seller.getStoreLogoUrl(),
+                seller.getPhoneNumber(),
+                seller.getGstNumber(),
+                seller.isVerified()
+        );
     }
 }

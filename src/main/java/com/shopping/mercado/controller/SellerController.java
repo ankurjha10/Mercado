@@ -33,4 +33,11 @@ public class SellerController {
         UUID userId = userPrincipal.getUser().getUserId();
         return ResponseEntity.ok(sellerService.getSellerProfile(userId));
     }
+
+    @PutMapping("/profile")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<SellerProfileResponse> updateSellerProfile(@RequestBody SellerProfileRequest sellerProfileRequest, @AuthenticationPrincipal UserPrincipal userPrincipal){
+        UUID userId = userPrincipal.getUser().getUserId();
+        return ResponseEntity.ok(sellerService.updateSellerProfile(userId, sellerProfileRequest));
+    }
 }

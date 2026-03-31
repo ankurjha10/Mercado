@@ -12,4 +12,5 @@ public interface SellerRepository extends JpaRepository<Seller, UUID> {
     Optional<Seller> findByUserUserId(UUID userId);
     Optional<Seller> findByGstNumber(String gstNumber);
     Optional<Seller> findByStoreName(String storeName);
+    boolean existsByStoreNameAndSellerIdNot(String storeName, UUID sellerId);
 }
