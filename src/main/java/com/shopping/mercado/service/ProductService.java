@@ -121,10 +121,10 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductDetailResponse updateProduct(UUID id, UpdateProductRequest dto, UUID sellerId) {
+    public ProductDetailResponse updateProduct(UUID id, UpdateProductRequest dto, UUID userId) {
         Product product = productRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, PRODUCT_NOT_FOUND + id));
 
-        if (!product.getSeller().getUser().getUserId().equals(sellerId)) {
+        if (!product.getSeller().getUser().getUserId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This Product doesn't belong to you");
         }
 
