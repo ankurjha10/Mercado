@@ -2,6 +2,9 @@ package com.shopping.mercado.service;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -58,7 +61,9 @@ public class CategoryService {
         return res;
     }
 
+    @Cacheable(value = "categories", key = "#id", condition = "#id != null")
     public CategoryDetailResponse getCategoryById(UUID id) {
+        System.out.println("Loading Data from Database....");
         return categoryRepository.findById(id)
                 .stream()
                 .findFirst()
@@ -66,6 +71,7 @@ public class CategoryService {
                 .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found with id: " + id));
     }
 
+    @Cacheable(value = "categories", key = "#name", condition = "#name != null")
     public CategoryDetailResponse getCategoryByName(String name) {
         return categoryRepository.findCategoriesByCategoryName(name)
                 .stream()
@@ -74,17 +80,20 @@ public class CategoryService {
                 .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found with name: " + name));
     }
 
+    @Cacheable(value = "categories")
     public List<CategoryListResponse> getAllCategories() {
         return categoryRepository.findAll().stream().map(this::toListResponse).toList();
     }
 
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public void deleteCategoryById(UUID id) {
         Category category = categoryRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found with id: " + id));
         categoryRepository.delete(category);
     }
 
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryListResponse updateCategory(UUID id, UpdateCategoryRequest dto) {
         Category category = categoryRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found with id: " + id));
 

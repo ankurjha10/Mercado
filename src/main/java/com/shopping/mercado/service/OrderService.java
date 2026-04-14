@@ -7,14 +7,18 @@ import com.shopping.mercado.entity.*;
 import com.shopping.mercado.repository.AddressRepository;
 import com.shopping.mercado.repository.CartRepository;
 import com.shopping.mercado.repository.OrderRepository;
+import com.shopping.mercado.repository.ProductRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.shopping.mercado.entity.enums.OrderStatus;
 import com.shopping.mercado.entity.enums.PaymentStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -26,21 +30,22 @@ public class OrderService {
     private final CartRepository cartRepository;
     private final AddressRepository addressRepository;
     private final OrderRepository orderRepository;
+    private final ProductRepository productRepository;
 
     @Transactional
     public OrderResponse placeOrder(UUID customerId, CheckoutRequest request){
         // Fetch the cart for the customer
         Cart cart = cartRepository.findByUserId(customerId)
-                .orElseThrow(() -> new RuntimeException("Cart not found for user: " + customerId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cart not found for user: " + customerId));
 
         List<CartItem> cartItemList = getCartItems(customerId, cart);
 
         //Fetch the Address
         Address address = addressRepository.findById(request.getAddressId())
-                .orElseThrow(() -> new RuntimeException("Address not found for user: " + customerId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Address not found for user: " + customerId));
 
         if (!address.getUser().getUserId().equals(customerId)) {
-            throw new RuntimeException("Use a valid address");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Use a valid address");
         }
 
         //Creating a new Order
@@ -79,34 +84,55 @@ public class OrderService {
         cart.getCartItems().clear();
         cartRepository.save(cart);
 
-        OrderResponse orderResponse = new OrderResponse();
-        orderResponse.setOrderId(placedOrder.getOrderId());
-        orderResponse.setOrderStatus(placedOrder.getOrderStatus().name());
-        orderResponse.setShippingAddress(placedOrder.getShippingAddress().getAddressLine1()
-                + ", " + placedOrder.getShippingAddress().getAddressLine2()
-                + ", " + placedOrder.getShippingAddress().getCity()
-                + ", " + placedOrder.getShippingAddress().getState()
-                + ", " + placedOrder.getShippingAddress().getPostalCode()
-                + ", " + placedOrder.getShippingAddress().getCountry()
-        );
+        return mapToOrderResponse(placedOrder);
+    }
 
-        orderResponse.setOrderItems(placedOrder.getOrderItems().stream().map(item -> {
+
+    //To Get All the Orders Placed
+    public List<OrderResponse> getMyOrders(UUID customerId) {
+
+        List<Orders> orders = orderRepository.findByCustomer_UserId(customerId);
+
+        if (orders.isEmpty())
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found for user: " + customerId);
+
+        return orders.stream().map(this::mapToOrderResponse).toList();
+    }
+
+    //TO Get a Particular Order by ID
+//    public OrderResponse getOrderById(UUID orderId, UUID customerId) {
+//
+//    }
+
+
+    private OrderResponse mapToOrderResponse(Orders order) {
+        OrderResponse orderResponse = new OrderResponse();
+        orderResponse.setOrderId(order.getOrderId());
+        orderResponse.setOrderStatus(order.getOrderStatus().name());
+        orderResponse.setTotalAmount(order.getTotalAmount());
+        orderResponse.setPlacedAt(LocalDateTime.now());
+        orderResponse.setShippingAddress(
+                order.getShippingAddress().getAddressLine1()
+                        + ", " + order.getShippingAddress().getAddressLine2()
+                        + ", " + order.getShippingAddress().getCity()
+                        + ", " + order.getShippingAddress().getState()
+                        + ", " + order.getShippingAddress().getPostalCode()
+                        + ", " + order.getShippingAddress().getCountry()
+        );
+        orderResponse.setOrderItems(order.getOrderItems().stream().map(item -> {
             OrderItemResponse itemResponse = new OrderItemResponse();
             itemResponse.setProductId(item.getProduct().getProductId());
             itemResponse.setProductName(item.getProduct().getProductName());
             itemResponse.setQuantity(item.getQuantity());
+            itemResponse.setProductImage(item.getProduct().getProductImage());
             itemResponse.setPriceAtPurchase(item.getPriceAtPurchase());
             itemResponse.setSubtotal(item.getPriceAtPurchase().multiply(BigDecimal.valueOf(item.getQuantity())));
             return itemResponse;
         }).toList());
-
-        orderResponse.setPlacedAt(placedOrder.getPlacedAt());
-        orderResponse.setTotalAmount(placedOrder.getTotalAmount());
-
         return orderResponse;
     }
 
-    private static List<CartItem> getCartItems(UUID customerId, Cart cart) {
+    private List<CartItem> getCartItems(UUID customerId, Cart cart) {
         List<CartItem> cartItemList = cart.getCartItems();
 
         //Check if cart is empty or not
@@ -123,6 +149,7 @@ public class OrderService {
             else {
                 // Reduce the stock
                 product.setProductStock(product.getProductStock() - cartItem.getQuantity());
+                productRepository.save(product);
             }
         }
         return cartItemList;

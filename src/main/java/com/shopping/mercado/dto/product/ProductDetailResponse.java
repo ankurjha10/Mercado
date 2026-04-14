@@ -12,7 +12,7 @@ public class ProductDetailResponse {
     public String productDescription;
     public String categoryName;
     public BigDecimal productPrice;
-    public int productQuantity;
+    public int productStock;
     public String productImage;
 }
 

@@ -6,6 +6,7 @@ import com.shopping.mercado.entity.UserPrincipal;
 import com.shopping.mercado.service.SellerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.Response;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -40,4 +41,8 @@ public class SellerController {
         UUID userId = userPrincipal.getUser().getUserId();
         return ResponseEntity.ok(sellerService.updateSellerProfile(userId, sellerProfileRequest));
     }
+
+//    @GetMapping("/orders")
+//    @PreAuthorize("hasRole('SELLER')")
+//    public ResponseEntity
 }

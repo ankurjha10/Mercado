@@ -20,6 +20,7 @@ import java.util.UUID;
 public class AuthUtil {
 
     private final UserDetailsService userDetailsService;
+
     @Value("${jwt.secretKey}")
     private String jwtSecretKey;
 
@@ -55,14 +56,5 @@ public class AuthUtil {
     public boolean isTokenValid(String token, UserDetails userDetails){
         String username = extractUsername(token);
         return username.equals(userDetails.getUsername());
-    }
-
-    public UUID getCurrentUserId(UserRepository userRepo) {
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
-
-        return userRepo.findByEmail(email).getUserId();
     }
 }

@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface CartRepository extends JpaRepository<Cart, UUID> {
     @Query("SELECT c FROM Cart c WHERE c.customer.userId = :userId")
     Optional<Cart> findByUserId(UUID userId);
+
 }

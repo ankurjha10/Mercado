@@ -12,5 +12,5 @@ public class UpdateProductRequest {
     public BigDecimal productPrice;
     public UUID categoryId;
     public String productImage;
-    public Integer productQuantity;
+    public Integer productStock;
 }

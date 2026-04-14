@@ -1,5 +1,6 @@
 package com.shopping.mercado.entity;
 
+import com.shopping.mercado.entity.enums.OrderStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -33,6 +34,13 @@ public class OrderItems {
 
     @Min(1)
     private int quantity;
+
+    @Enumerated(EnumType.STRING)
+    private OrderStatus orderStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seller_id")
+    private Seller seller;
 
     @PositiveOrZero
     @Column(nullable = false)

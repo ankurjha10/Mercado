@@ -9,7 +9,7 @@ import java.util.UUID;
 public class CreateProductRequest {
     private String productName;
     private String productDescription;
-    private int productQuantity;
+    private int productStock;
     private BigDecimal productPrice;
     private String productImage;
     private UUID categoryId;

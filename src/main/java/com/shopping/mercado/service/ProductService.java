@@ -1,6 +1,7 @@
 package com.shopping.mercado.service;
 
 import com.shopping.mercado.entity.Seller;
+import com.shopping.mercado.repository.CartItemRepository;
 import com.shopping.mercado.repository.SellerRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
@@ -28,6 +29,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final SellerRepository sellerRepository;
+    private final CartItemRepository cartItemRepository;
 
     private static final String PRODUCT_NOT_FOUND = "Product not found with id: ";
 
@@ -50,7 +52,7 @@ public class ProductService {
         res.productPrice = p.getProductPrice();
         res.productImage = p.getProductImage();
         res.categoryName = p.getProductCategory().getCategoryName();
-        res.productQuantity = p.getProductStock();
+        res.productStock = p.getProductStock();
 
         return res;
     }
@@ -93,7 +95,7 @@ public class ProductService {
         product.setProductDescription(dto.getProductDescription());
         product.setProductImage(dto.getProductImage());
         product.setProductPrice(dto.getProductPrice());
-        product.setProductStock(dto.getProductQuantity());
+        product.setProductStock(dto.getProductStock());
         product.setProductCategory(category);
         product.setSeller(seller);
 
@@ -104,7 +106,7 @@ public class ProductService {
         res.productName = saved.getProductName();
         res.productDescription = saved.getProductDescription();
         res.productImage = saved.getProductImage();
-        res.productQuantity = saved.getProductStock();
+        res.productStock = saved.getProductStock();
         res.productPrice = saved.getProductPrice();
         res.categoryName = category.getCategoryName();
         return res;
@@ -117,6 +119,9 @@ public class ProductService {
         if (!product.getSeller().getUser().getUserId().equals(sellerId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seller not found");
         }
+
+        cartItemRepository.deleteByProduct_ProductId(id);
+
         productRepository.delete(product);
     }
 
@@ -137,8 +142,8 @@ public class ProductService {
         if (dto.productImage != null)
             product.setProductImage(dto.productImage);
 
-        if (dto.productQuantity != null)
-            product.setProductStock(dto.productQuantity);
+        if (dto.productStock != null)
+            product.setProductStock(dto.productStock);
 
         if (dto.productPrice != null)
             product.setProductPrice(dto.productPrice);
