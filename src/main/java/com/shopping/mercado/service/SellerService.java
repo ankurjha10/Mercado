@@ -1,12 +1,16 @@
 package com.shopping.mercado.service;
 
+import com.shopping.mercado.dto.order.OrderResponse;
+import com.shopping.mercado.dto.order.OrderStatusUpdateRequest;
 import com.shopping.mercado.dto.seller.SellerProfileRequest;
 import com.shopping.mercado.dto.seller.SellerProfileResponse;
-import com.shopping.mercado.entity.OrderItems;
+import com.shopping.mercado.entity.Orders;
 import com.shopping.mercado.entity.Seller;
 import com.shopping.mercado.entity.User;
+import com.shopping.mercado.repository.OrderRepository;
 import com.shopping.mercado.repository.SellerRepository;
 import com.shopping.mercado.repository.UserRepository;
+import com.shopping.mercado.util.OrderMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,12 +26,23 @@ public class SellerService {
 
     private final SellerRepository sellerRepository;
     private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
+    private final OrderMapper orderMapper;
+
 
     @Transactional
     public SellerProfileResponse createSeller(SellerProfileRequest request, UUID userId) {
 
         if (sellerRepository.findByUserUserId(userId).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Seller Profile already exists");
+        }
+
+        if (sellerRepository.findByStoreName(request.getStoreName()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Store name already exists");
+        }
+
+        if (sellerRepository.findByGstNumber(request.getGstNumber()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "GST already exists");
         }
 
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -41,14 +56,6 @@ public class SellerService {
                 .gstNumber(request.getGstNumber())
                 .isVerified(false)
                 .build();
-
-        if (sellerRepository.findByStoreName(request.getStoreName()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Store name already exists");
-        }
-
-        if (sellerRepository.findByGstNumber(request.getGstNumber()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "GST already exists");
-        }
 
         SellerProfileResponse response;
         try {
@@ -103,6 +110,10 @@ public class SellerService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Store name already exists");
         }
 
+        if (sellerRepository.existsByGstNumberAndSellerIdNot(request.getGstNumber(), seller.getSellerId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "GST number already exists");
+        }
+
         seller.setStoreName(request.getStoreName());
         seller.setStoreLogoUrl(request.getStoreLogoUrl());
         seller.setStoreDescription(request.getStoreDescription());
@@ -120,8 +131,43 @@ public class SellerService {
         );
     }
 
-//    @Transactional
-//    public List<OrderItems> getMyOrders(){
-//
-//    }
+    public List<OrderResponse> getMyOrders(UUID userId) {
+        Seller seller = sellerRepository.findByUserUserId(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Seller not found"));
+
+        if (!seller.isVerified())
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seller not verified");
+
+        List<Orders> orders = orderRepository.findByOrderItems_Seller_SellerId(seller.getSellerId());
+
+        if (orders.isEmpty())
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No orders found");
+
+        return orders.stream().map(orderMapper::toOrderResponse).toList();
+    }
+
+    @Transactional
+    public OrderResponse updateOrderStatus(UUID userId, UUID orderId, OrderStatusUpdateRequest request) {
+        Seller seller = sellerRepository.findByUserUserId(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Seller not found"));
+
+        if (!seller.isVerified())
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seller not verified");
+
+        Orders order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found: " + orderId));
+
+        boolean isSellersOrder = order.getOrderItems().stream()
+                .anyMatch(item -> item.getSeller().getSellerId().equals(seller.getSellerId()));
+
+        if (!isSellersOrder)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have access to this order");
+
+        order.getOrderItems().stream()
+                .filter(item -> item.getSeller().getSellerId().equals(seller.getSellerId()))
+                .forEach(item -> item.setOrderStatus(request.getOrderStatus()));
+
+        Orders updatedOrder = orderRepository.save(order);
+        return orderMapper.toOrderResponse(updatedOrder);
+    }
 }

@@ -2,6 +2,7 @@ package com.shopping.mercado.controller;
 
 import com.shopping.mercado.dto.order.CheckoutRequest;
 import com.shopping.mercado.dto.order.OrderResponse;
+import com.shopping.mercado.dto.order.OrderStatusUpdateRequest;
 import com.shopping.mercado.entity.UserPrincipal;
 import com.shopping.mercado.service.OrderService;
 import jakarta.validation.Valid;
@@ -37,5 +38,24 @@ public class OrderController {
         List<OrderResponse> orderResponse = orderService.getMyOrders(customerId);
 
         return ResponseEntity.ok(orderResponse);
+    }
+
+    @GetMapping("/{orderId}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<OrderResponse> getOrderById(
+            @PathVariable UUID orderId,
+            @AuthenticationPrincipal UserPrincipal userDetails) {
+        UUID customerId = userDetails.getUser().getUserId();
+        OrderResponse orderResponse = orderService.getOrderById(orderId, customerId);
+        return ResponseEntity.ok(orderResponse);
+    }
+
+    @DeleteMapping("/{orderId}/cancel")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<OrderResponse> cancelOrder(
+            @PathVariable UUID orderId,
+            @AuthenticationPrincipal UserPrincipal userDetails) {
+        UUID customerId = userDetails.getUser().getUserId();
+        return ResponseEntity.ok(orderService.cancelOrder(orderId, customerId));
     }
 }

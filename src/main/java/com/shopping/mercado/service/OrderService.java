@@ -3,11 +3,13 @@ package com.shopping.mercado.service;
 import com.shopping.mercado.dto.order.CheckoutRequest;
 import com.shopping.mercado.dto.order.OrderItemResponse;
 import com.shopping.mercado.dto.order.OrderResponse;
+import com.shopping.mercado.dto.order.OrderStatusUpdateRequest;
 import com.shopping.mercado.entity.*;
 import com.shopping.mercado.repository.AddressRepository;
 import com.shopping.mercado.repository.CartRepository;
 import com.shopping.mercado.repository.OrderRepository;
 import com.shopping.mercado.repository.ProductRepository;
+import com.shopping.mercado.util.OrderMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,7 +20,6 @@ import com.shopping.mercado.entity.enums.PaymentStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,6 +32,8 @@ public class OrderService {
     private final AddressRepository addressRepository;
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
+    private final OrderMapper orderMapper;
+
 
     @Transactional
     public OrderResponse placeOrder(UUID customerId, CheckoutRequest request){
@@ -84,7 +87,7 @@ public class OrderService {
         cart.getCartItems().clear();
         cartRepository.save(cart);
 
-        return mapToOrderResponse(placedOrder);
+        return orderMapper.toOrderResponse(placedOrder);
     }
 
 
@@ -96,41 +99,46 @@ public class OrderService {
         if (orders.isEmpty())
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found for user: " + customerId);
 
-        return orders.stream().map(this::mapToOrderResponse).toList();
+        return orders.stream().map(orderMapper::toOrderResponse).toList();
     }
 
     //TO Get a Particular Order by ID
-//    public OrderResponse getOrderById(UUID orderId, UUID customerId) {
-//
-//    }
+    public OrderResponse getOrderById(UUID orderId, UUID customerId) {
+        Orders order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found: " + orderId));
 
+        if (!order.getCustomer().getUserId().equals(customerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied to this order");
+        }
 
-    private OrderResponse mapToOrderResponse(Orders order) {
-        OrderResponse orderResponse = new OrderResponse();
-        orderResponse.setOrderId(order.getOrderId());
-        orderResponse.setOrderStatus(order.getOrderStatus().name());
-        orderResponse.setTotalAmount(order.getTotalAmount());
-        orderResponse.setPlacedAt(LocalDateTime.now());
-        orderResponse.setShippingAddress(
-                order.getShippingAddress().getAddressLine1()
-                        + ", " + order.getShippingAddress().getAddressLine2()
-                        + ", " + order.getShippingAddress().getCity()
-                        + ", " + order.getShippingAddress().getState()
-                        + ", " + order.getShippingAddress().getPostalCode()
-                        + ", " + order.getShippingAddress().getCountry()
-        );
-        orderResponse.setOrderItems(order.getOrderItems().stream().map(item -> {
-            OrderItemResponse itemResponse = new OrderItemResponse();
-            itemResponse.setProductId(item.getProduct().getProductId());
-            itemResponse.setProductName(item.getProduct().getProductName());
-            itemResponse.setQuantity(item.getQuantity());
-            itemResponse.setProductImage(item.getProduct().getProductImage());
-            itemResponse.setPriceAtPurchase(item.getPriceAtPurchase());
-            itemResponse.setSubtotal(item.getPriceAtPurchase().multiply(BigDecimal.valueOf(item.getQuantity())));
-            return itemResponse;
-        }).toList());
-        return orderResponse;
+        return orderMapper.toOrderResponse(order);
     }
+
+    @Transactional
+    public OrderResponse cancelOrder(UUID orderId, UUID customerId) {
+        Orders order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found: " + orderId));
+
+        if (!order.getCustomer().getUserId().equals(customerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied to this order");
+        }
+
+        if (order.getOrderStatus() != OrderStatus.PENDING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending orders can be cancelled");
+        }
+
+        // Restore stock
+        for (OrderItems item : order.getOrderItems()) {
+            Product product = item.getProduct();
+            product.setProductStock(product.getProductStock() + item.getQuantity());
+            productRepository.save(product);
+        }
+
+        order.setOrderStatus(OrderStatus.CANCELLED);
+        Orders cancelledOrder = orderRepository.save(order);
+        return orderMapper.toOrderResponse(cancelledOrder);
+    }
+
 
     private List<CartItem> getCartItems(UUID customerId, Cart cart) {
         List<CartItem> cartItemList = cart.getCartItems();
