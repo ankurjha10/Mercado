@@ -2,6 +2,7 @@ package com.shopping.mercado.service;
 
 import com.shopping.mercado.dto.admin.SellerResponse;
 import com.shopping.mercado.dto.admin.UserResponse;
+import com.shopping.mercado.entity.Product;
 import com.shopping.mercado.entity.Seller;
 import com.shopping.mercado.entity.User;
 import com.shopping.mercado.repository.ProductRepository;
@@ -41,6 +42,11 @@ public class AdminService {
 
     public List<UserResponse> getAllUsers(){
         return userRepository.findAll().stream().map(this::toUserResponse).toList();
+    }
+
+    public void deleteProduct(UUID productId){
+        Product product = productRepository.findById(productId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not Found with Id: " + productId));
+        productRepository.delete(product);
     }
 
     private UserResponse toUserResponse(User user){

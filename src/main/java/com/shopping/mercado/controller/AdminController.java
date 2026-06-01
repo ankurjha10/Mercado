@@ -42,4 +42,11 @@ public class AdminController {
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         return ResponseEntity.ok(adminService.getAllUsers());
     }
+
+    @DeleteMapping("/products/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteProduct(@PathVariable UUID id) {
+        adminService.deleteProduct(id);
+        return ResponseEntity.ok("Product deleted");
+    }
 }
