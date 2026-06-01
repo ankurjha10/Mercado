@@ -93,6 +93,8 @@ public class AuthService {
     }
 
     public LoginResponse login(LoginRequest loginRequest) {
+        System.out.println("LOGIN METHOD HIT");
+
         try {
             if (loginRequest.getUsername() == null || loginRequest.getUsername().trim().isEmpty()) {
                 throw new IllegalArgumentException("Username cannot be empty");
